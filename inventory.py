@@ -40,16 +40,11 @@ def add_items(name, stock, price):
 def add_stock(identifier, stock):
     item = get_item(identifier)
     if item is None:
-        return
-
-    previous_stock = item["stock"]
-    new_stock = previous_stock + stock
-    cur.execute(
-        """
-    UPDATE items SET stock = ? WHERE item_id = ?
-    """,
-        (new_stock, item["item_id"]),
-    )
+        raise ValueError(f"Item '{identifier}' does not exist")
+    if stock <= 0:
+        raise ValueError("Quantity must be positive")
+    new_stock = item["stock"] + stock
+    cur.execute("UPDATE items SET stock = ? WHERE item_id = ?", (new_stock, item["item_id"]))
     connection.commit()
 
 
@@ -64,14 +59,14 @@ def get_all_items():
 
 def remove_stock(identifier, stock):
     item = get_item(identifier)
-    previous_stock = item["stock"]
-    new_stock = previous_stock - stock
-    cur.execute(
-        """
-    UPDATE items SET stock = ? WHERE item_id = ?
-    """,
-        (new_stock, item["item_id"]),
-    )
+    if item is None:
+        raise ValueError(f"Item '{identifier}' does not exist")
+    if stock <= 0:
+        raise ValueError("Quantity must be positive")
+    if stock > item["stock"]:
+        raise ValueError("Insufficient stock")
+    new_stock = item["stock"] - stock
+    cur.execute("UPDATE items SET stock = ? WHERE item_id = ?", (new_stock, item["item_id"]))
     connection.commit()
 
 

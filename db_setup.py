@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 from db_conection import set_connection
 
 load_dotenv()
-DATABASE = os.getenv("MAIN_DB")
+DATABASE = os.getenv("MAIN_DB", "inventory.db")
 
 
 ITEMS_TABLE = """
@@ -45,7 +45,7 @@ def run_migration(databases):
 def main():
     run_migration(DATABASE)
 
-    print("Setup completed!!!!")
+    print("Database Connected Successfully!!!!")
 
 
 if __name__ == "__main__":
