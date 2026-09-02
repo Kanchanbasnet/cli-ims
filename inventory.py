@@ -1,11 +1,5 @@
-from db_conection import set_connection
-from db_setup import DATABASE
-
-connection = set_connection(DATABASE)
-cur = connection.cursor()
-
-
-def get_item(identifier):
+def get_item(conn, identifier):
+    cur = conn.cursor()
     cur.execute(
         """SELECT * FROM items WHERE name = ? OR item_id = ?""",
         (identifier, identifier),
@@ -21,8 +15,10 @@ def get_item(identifier):
     }
 
 
-def add_items(name, stock, price):
-    if get_item(name):
+def add_items(conn,name, stock, price):
+    cur = conn.cursor()
+    
+    if get_item(conn, name):
         raise ValueError(f"Item {name} already exist.")
     if stock < 0:
         raise ValueError("Stock cannot be negative.")
@@ -34,21 +30,23 @@ def add_items(name, stock, price):
                 """,
         (name, stock, price),
     )
-    connection.commit()
+    conn.commit()
 
 
-def add_stock(identifier, stock):
-    item = get_item(identifier)
+def add_stock(conn,identifier, stock):
+    cur = conn.cursor()
+    item = get_item(conn, identifier)
     if item is None:
         raise ValueError(f"Item '{identifier}' does not exist")
     if stock <= 0:
         raise ValueError("Quantity must be positive")
     new_stock = item["stock"] + stock
     cur.execute("UPDATE items SET stock = ? WHERE item_id = ?", (new_stock, item["item_id"]))
-    connection.commit()
+    conn.commit()
 
 
-def get_all_items():
+def get_all_items(conn):
+    cur = conn.cursor()
     cur.execute("""SELECT * FROM items""")
     items = cur.fetchall()
     return [
@@ -57,8 +55,9 @@ def get_all_items():
     ]
 
 
-def remove_stock(identifier, stock):
-    item = get_item(identifier)
+def remove_stock(conn,identifier, stock):
+    cur = conn.cursor()
+    item = get_item(conn,identifier)
     if item is None:
         raise ValueError(f"Item '{identifier}' does not exist")
     if stock <= 0:
@@ -67,10 +66,11 @@ def remove_stock(identifier, stock):
         raise ValueError("Insufficient stock")
     new_stock = item["stock"] - stock
     cur.execute("UPDATE items SET stock = ? WHERE item_id = ?", (new_stock, item["item_id"]))
-    connection.commit()
+    conn.commit()
 
 
-def get_low_stock_report(threshold):
+def get_low_stock_report(conn,threshold):
+    cur = conn.cursor()
     cur.execute("SELECT * FROM items WHERE stock < ?", (threshold,))
     items = cur.fetchall()
     return [
@@ -79,8 +79,9 @@ def get_low_stock_report(threshold):
     ]
 
 
-def place_order(name, quantity):
-    item = get_item(name)
+def place_order(conn, name, quantity):
+    cur = conn.cursor()
+    item = get_item(conn,name)
     if item is None:
         raise ValueError(f"Item '{name}' does not exist")
     if quantity <= 0:
@@ -98,7 +99,7 @@ def place_order(name, quantity):
         "INSERT INTO orders (item_id, quantity, total_price) VALUES (?, ?, ?)",
         (item["item_id"], quantity, total_price),
     )
-    connection.commit()
+    conn.commit()
 
     return {
         "item_id": item["item_id"],
@@ -108,7 +109,8 @@ def place_order(name, quantity):
     }
 
 
-def get_order(order_id):
+def get_order(conn,order_id):
+    cur = conn.cursor()
     cur.execute("SELECT * FROM orders WHERE order_id = ?", (order_id,))
     row = cur.fetchone()
     if row is None:
@@ -122,8 +124,9 @@ def get_order(order_id):
     }
 
 
-def cancel_order(order_id):
-    order = get_order(order_id)
+def cancel_order(conn,order_id):
+    cur = conn.cursor()
+    order = get_order(conn,order_id)
     if order is None:
         raise ValueError(f"Order {order_id} does not exist")
 
@@ -132,12 +135,13 @@ def cancel_order(order_id):
         (order["quantity"], order["item_id"]),
     )
     cur.execute("DELETE FROM orders WHERE order_id = ?", (order_id,))
-    connection.commit()
+    conn.commit()
 
     return order
 
 
-def get_most_ordered_items():
+def get_most_ordered_items(conn):
+    cur = conn.cursor()
     cur.execute("""
         SELECT items.item_id, items.name, SUM(orders.quantity) AS total_ordered
         FROM orders
